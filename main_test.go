@@ -49,23 +49,23 @@ func TestRunCommand(t *testing.T) {
 			silent:     false,
 			wantError:  true,
 			wantStdout: "",
-			wantStderr: "",  // Error message is handled by main(), not runCommand
+			wantStderr: "", // Error message is handled by main(), not runCommand
 		},
 		{
 			name:       "Invalid IP with silent mode",
-			args:      []string{"invalid-ip"},
-			silent:    true,
-			wantError: true,
+			args:       []string{"invalid-ip"},
+			silent:     true,
+			wantError:  true,
 			wantStdout: "",
 			wantStderr: "",
 		},
 		{
-			name:      "Invalid IP without silent mode",
-			args:      []string{"invalid-ip"},
-			silent:    false,
-			wantError: true,
+			name:       "Invalid IP without silent mode",
+			args:       []string{"invalid-ip"},
+			silent:     false,
+			wantError:  true,
 			wantStdout: "",
-			wantStderr: "",  // Error message is handled by main(), not runCommand
+			wantStderr: "", // Error message is handled by main(), not runCommand
 		},
 	}
 
@@ -251,55 +251,55 @@ func TestMainFunction(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				// Capture stderr for checking error messages
-				oldStdout := os.Stdout
-				oldStderr := os.Stderr
-				_, wOut, _ := os.Pipe()
-				rErr, wErr, _ := os.Pipe()
-				os.Stdout = wOut
-				os.Stderr = wErr
+			// Capture stderr for checking error messages
+			oldStdout := os.Stdout
+			oldStderr := os.Stderr
+			_, wOut, _ := os.Pipe()
+			rErr, wErr, _ := os.Pipe()
+			os.Stdout = wOut
+			os.Stderr = wErr
 
-				// Set up test args
-				os.Args = tt.args
+			// Set up test args
+			os.Args = tt.args
 
-				// Create exit code channel
-				exitCode := make(chan int, 1)
-				osExit = func(code int) {
-					exitCode <- code
-					// Don't actually exit in tests
+			// Create exit code channel
+			exitCode := make(chan int, 1)
+			osExit = func(code int) {
+				exitCode <- code
+				// Don't actually exit in tests
+			}
+
+			// Run main in goroutine
+			go func() {
+				main()
+				exitCode <- 0
+			}()
+
+			// Get exit code
+			code := <-exitCode
+
+			// Close pipes
+			wOut.Close()
+			wErr.Close()
+			os.Stdout = oldStdout
+			os.Stderr = oldStderr
+
+			// Read stderr
+			var bufErr bytes.Buffer
+			bufErr.ReadFrom(rErr)
+			stderr := bufErr.String()
+
+			if code != tt.wantCode {
+				t.Errorf("main() exitCode = %v, want %v", code, tt.wantCode)
+			}
+
+			// For non-GitHub IPs, verify no "Error: " prefix
+			if code == 1 && !tt.silent {
+				expectedMsg := "the provided IP address is not a GitHub-owned address\n"
+				if stderr != expectedMsg {
+					t.Errorf("main() stderr = %q, want %q", stderr, expectedMsg)
 				}
-
-				// Run main in goroutine
-				go func() {
-					main()
-					exitCode <- 0
-				}()
-
-				// Get exit code
-				code := <-exitCode
-				
-				// Close pipes
-				wOut.Close()
-				wErr.Close()
-				os.Stdout = oldStdout
-				os.Stderr = oldStderr
-
-				// Read stderr
-				var bufErr bytes.Buffer
-				bufErr.ReadFrom(rErr)
-				stderr := bufErr.String()
-
-				if code != tt.wantCode {
-					t.Errorf("main() exitCode = %v, want %v", code, tt.wantCode)
-				}
-
-				// For non-GitHub IPs, verify no "Error: " prefix
-				if code == 1 && !tt.silent {
-					expectedMsg := "The provided IP address is not a GitHub-owned address\n"
-					if stderr != expectedMsg {
-						t.Errorf("main() stderr = %q, want %q", stderr, expectedMsg)
-					}
-				}
+			}
 		})
 	}
 }

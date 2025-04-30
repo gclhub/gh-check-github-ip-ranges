@@ -17,9 +17,9 @@ func main() {
 		Long: `Check if a given IP address is within GitHub's published IP ranges.
 The ranges are fetched from GitHub's /meta API endpoint. Only IPv4 addresses
 are supported at this time.`,
-		Args: cobra.ExactArgs(1),
-		RunE: runCommand,
-		SilenceUsage: true,
+		Args:          cobra.ExactArgs(1),
+		RunE:          runCommand,
+		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
 
@@ -27,16 +27,16 @@ are supported at this time.`,
 
 	if err := cmd.Execute(); err != nil {
 		if !cmd.Flags().Changed("silent") {
-			if err.Error() == "The provided IP address is not a GitHub-owned address" {
+			if err.Error() == "the provided IP address is not a GitHub-owned address" {
 				fmt.Fprintf(os.Stderr, "%v\n", err)
 			} else {
 				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			}
 		}
-		
+
 		// Determine exit code based on error type
 		switch {
-		case err.Error() == "The provided IP address is not a GitHub-owned address":
+		case err.Error() == "the provided IP address is not a GitHub-owned address":
 			osExit(1)
 		default:
 			osExit(2)
@@ -55,11 +55,11 @@ func runCommand(cmd *cobra.Command, args []string) error {
 	}
 
 	if !result.IsGitHubIP {
-		return fmt.Errorf("The provided IP address is not a GitHub-owned address")
+		return fmt.Errorf("the provided IP address is not a GitHub-owned address")
 	}
 
 	if !silent {
-		fmt.Printf("IP %s belongs to GitHub's %s range (%s)\n", 
+		fmt.Printf("IP %s belongs to GitHub's %s range (%s)\n",
 			ipAddress, result.FunctionalArea, result.Range)
 	}
 	return nil
