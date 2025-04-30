@@ -182,93 +182,124 @@ func TestMainFunction(t *testing.T) {
 		args     []string
 		wantCode int
 		wantErr  bool
+		silent   bool
 	}{
 		{
 			name:     "Valid GitHub IP",
 			args:     []string{"gh-check-github-ip-ranges", "192.30.252.1"},
 			wantCode: 0,
 			wantErr:  false,
+			silent:   false,
 		},
 		{
 			name:     "Non-GitHub IP",
 			args:     []string{"gh-check-github-ip-ranges", "8.8.8.8"},
 			wantCode: 1,
 			wantErr:  true,
+			silent:   false,
 		},
 		{
 			name:     "Invalid IP format",
 			args:     []string{"gh-check-github-ip-ranges", "invalid-ip"},
 			wantCode: 2,
 			wantErr:  true,
+			silent:   false,
 		},
 		{
 			name:     "Private IP",
 			args:     []string{"gh-check-github-ip-ranges", "192.168.1.1"},
 			wantCode: 2,
 			wantErr:  true,
+			silent:   false,
 		},
 		{
 			name:     "IPv6 address",
 			args:     []string{"gh-check-github-ip-ranges", "2001:db8::1"},
 			wantCode: 2,
 			wantErr:  true,
+			silent:   false,
 		},
 		{
 			name:     "Broadcast address",
 			args:     []string{"gh-check-github-ip-ranges", "255.255.255.255"},
 			wantCode: 2,
 			wantErr:  true,
+			silent:   false,
 		},
 		{
 			name:     "No arguments",
 			args:     []string{"gh-check-github-ip-ranges"},
 			wantCode: 2,
 			wantErr:  true,
+			silent:   false,
 		},
 		{
 			name:     "Help flag",
 			args:     []string{"gh-check-github-ip-ranges", "--help"},
 			wantCode: 0,
 			wantErr:  false,
+			silent:   false,
+		},
+		{
+			name:     "Non-GitHub IP with silent mode",
+			args:     []string{"gh-check-github-ip-ranges", "8.8.8.8", "-s"},
+			wantCode: 1,
+			wantErr:  true,
+			silent:   true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Redirect stdout/stderr
-			oldStdout := os.Stdout
-			oldStderr := os.Stderr
-			_, w, _ := os.Pipe()
-			os.Stdout = w
-			os.Stderr = w
-			defer func() {
+				// Capture stderr for checking error messages
+				oldStdout := os.Stdout
+				oldStderr := os.Stderr
+				_, wOut, _ := os.Pipe()
+				rErr, wErr, _ := os.Pipe()
+				os.Stdout = wOut
+				os.Stderr = wErr
+
+				// Set up test args
+				os.Args = tt.args
+
+				// Create exit code channel
+				exitCode := make(chan int, 1)
+				osExit = func(code int) {
+					exitCode <- code
+					// Don't actually exit in tests
+				}
+
+				// Run main in goroutine
+				go func() {
+					main()
+					exitCode <- 0
+				}()
+
+				// Get exit code
+				code := <-exitCode
+				
+				// Close pipes
+				wOut.Close()
+				wErr.Close()
 				os.Stdout = oldStdout
 				os.Stderr = oldStderr
-			}()
 
-			// Set up test args
-			os.Args = tt.args
+				// Read stderr
+				var bufErr bytes.Buffer
+				bufErr.ReadFrom(rErr)
+				stderr := bufErr.String()
 
-			// Create exit code channel
-			exitCode := make(chan int, 1)
-			osExit = func(code int) {
-				exitCode <- code
-				// Don't actually exit in tests
-			}
+				if code != tt.wantCode {
+					t.Errorf("main() exitCode = %v, want %v", code, tt.wantCode)
+				}
 
-			// Run main in goroutine
-			go func() {
-				main()
-				exitCode <- 0
-			}()
-
-			// Get exit code
-			code := <-exitCode
-			w.Close()
-
-			if code != tt.wantCode {
-				t.Errorf("main() exitCode = %v, want %v", code, tt.wantCode)
-			}
+				// For non-GitHub IPs, verify no "Error: " prefix
+				if code == 1 && !tt.silent {
+					expectedMsg := "The provided IP address is not a GitHub-owned address\n"
+					if stderr != expectedMsg {
+						t.Errorf("main() stderr = %q, want %q", stderr, expectedMsg)
+					}
+				}
 		})
 	}
 }

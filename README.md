@@ -21,7 +21,14 @@ gh check-github-ip-ranges <ip-address>
 ### Exit Codes
 
 - `0`: Success (IP address belongs to GitHub)
-- `1`: Error or IP address does not belong to GitHub
+- `1`: IP address does not belong to GitHub
+- `2`: Invalid input or error condition:
+  - Invalid IP address format
+  - Non-IPv4 address (IPv6 is not supported)
+  - Private, loopback, multicast, or broadcast IP addresses
+  - Network errors when fetching GitHub IP ranges
+  - API errors from GitHub's meta endpoint
+  - Missing command line arguments
 
 ### Examples
 
@@ -56,19 +63,41 @@ fi
 
 To work on this locally:
 
+1. Clone the repository:
 ```bash
 git clone https://github.com/gclhub/gh-check-github-ip-ranges
 cd gh-check-github-ip-ranges
 ```
 
-2. Build the extension
+2. Install the extension from your local directory:
+```bash
+gh extension remove check-github-ip-ranges  # Remove any existing installation
+gh extension install .  # Install from current directory
+```
+
+3. Build the extension:
 ```bash
 go build
 ```
 
-3. Run tests
+4. Run tests:
 ```bash
 go test ./...
+```
+
+Now you can run the extension through `gh` and any changes you make will be reflected after rebuilding:
+```bash
+gh check-github-ip-ranges <ip-address>
+```
+
+To iterate on changes:
+1. Make your code changes
+2. Run `go build`
+3. Test the extension with `gh check-github-ip-ranges`
+
+To enable debug logging, set the `GH_DEBUG` environment variable:
+```bash
+GH_DEBUG=1 gh check-github-ip-ranges <ip-address>
 ```
 
 ## License

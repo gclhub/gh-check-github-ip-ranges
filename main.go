@@ -27,7 +27,11 @@ are supported at this time.`,
 
 	if err := cmd.Execute(); err != nil {
 		if !cmd.Flags().Changed("silent") {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			if err.Error() == "The provided IP address is not a GitHub-owned address" {
+				fmt.Fprintf(os.Stderr, "%v\n", err)
+			} else {
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			}
 		}
 		
 		// Determine exit code based on error type
