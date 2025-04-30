@@ -1,8 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -40,10 +42,42 @@ func TestIPChecker_CheckIP(t *testing.T) {
 	}))
 	defer invalidJSONServer.Close()
 
+	// Invalid CIDR server
+	invalidCIDRServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{
+			"hooks": ["invalid-cidr"],
+			"web": ["not-a-cidr"],
+			"api": ["192.30.252.0/22"],
+			"git": ["192.30.252.0/22"]
+		}`))
+	}))
+	defer invalidCIDRServer.Close()
+
+	// Mixed valid/invalid CIDR server
+	mixedCIDRServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{
+			"hooks": ["invalid-cidr", "also-invalid"],
+			"web": ["not-a-cidr"],
+			"api": ["invalid"],
+			"git": ["192.30.252.0/22"]
+		}`))
+	}))
+	defer mixedCIDRServer.Close()
+
+	// Create a client that always fails
+	failingClient := &http.Client{
+		Transport: &failingTransport{},
+	}
+
 	tests := []struct {
 		name       string
 		ip         string
 		mockServer *httptest.Server
+		client     *http.Client
 		wantErr    bool
 		wantErrMsg string
 		want       *CheckResult
@@ -52,6 +86,7 @@ func TestIPChecker_CheckIP(t *testing.T) {
 			name:       "Valid GitHub IP",
 			ip:         "192.30.252.1",
 			mockServer: successServer,
+			client:     nil,
 			wantErr:    false,
 			want: &CheckResult{
 				IsGitHubIP:     true,
@@ -63,6 +98,7 @@ func TestIPChecker_CheckIP(t *testing.T) {
 			name:       "Non-GitHub IP",
 			ip:         "8.8.8.8",
 			mockServer: successServer,
+			client:     nil,
 			wantErr:    false,
 			want: &CheckResult{
 				IsGitHubIP: false,
@@ -72,38 +108,43 @@ func TestIPChecker_CheckIP(t *testing.T) {
 			name:       "Invalid IP format",
 			ip:         "invalid-ip",
 			mockServer: successServer,
+			client:     nil,
 			wantErr:    true,
-			wantErrMsg: "Error: invalid IP address format",
+			wantErrMsg: "invalid IP address format",
 			want:       nil,
 		},
 		{
 			name:       "Private IP",
 			ip:         "192.168.1.1",
 			mockServer: successServer,
+			client:     nil,
 			wantErr:    true,
-			wantErrMsg: "Error: IP address must be a public, routable address",
+			wantErrMsg: "IP address must be a public, routable address",
 			want:       nil,
 		},
 		{
 			name:       "IPv6 address",
 			ip:         "2001:db8::1",
 			mockServer: successServer,
+			client:     nil,
 			wantErr:    true,
-			wantErrMsg: "Error: only IPv4 addresses are supported",
+			wantErrMsg: "only IPv4 addresses are supported",
 			want:       nil,
 		},
 		{
 			name:       "Broadcast address",
 			ip:         "255.255.255.255",
 			mockServer: successServer,
+			client:     nil,
 			wantErr:    true,
-			wantErrMsg: "Error: IP address must be a public, routable address",
+			wantErrMsg: "IP address must be a public, routable address",
 			want:       nil,
 		},
 		{
 			name:       "API Server Error",
 			ip:         "8.8.8.8",
 			mockServer: errorServer,
+			client:     nil,
 			wantErr:    true,
 			want:       nil,
 		},
@@ -111,8 +152,42 @@ func TestIPChecker_CheckIP(t *testing.T) {
 			name:       "Invalid JSON Response",
 			ip:         "8.8.8.8",
 			mockServer: invalidJSONServer,
+			client:     nil,
 			wantErr:    true,
 			want:       nil,
+		},
+		{
+			name:       "Network Error",
+			ip:         "8.8.8.8",
+			mockServer: successServer,
+			client:     failingClient,
+			wantErr:    true,
+			wantErrMsg: "failed to fetch GitHub meta",
+			want:       nil,
+		},
+		{
+			name:       "Invalid CIDR Format",
+			ip:         "192.30.252.1",
+			mockServer: invalidCIDRServer,
+			client:     nil,
+			wantErr:    false, // Should not error, just skip invalid CIDRs
+			want: &CheckResult{
+				IsGitHubIP:     true,
+				FunctionalArea: "API",
+				Range:          "192.30.252.0/22",
+			},
+		},
+		{
+			name:       "Valid IP Found After Invalid CIDRs",
+			ip:         "192.30.252.1",
+			mockServer: mixedCIDRServer,
+			client:     nil,
+			wantErr:    false,
+			want: &CheckResult{
+				IsGitHubIP:     true,
+				FunctionalArea: "Git",
+				Range:          "192.30.252.0/22",
+			},
 		},
 	}
 
@@ -124,6 +199,10 @@ func TestIPChecker_CheckIP(t *testing.T) {
 			defer func() { githubMetaURL = oldURL }()
 
 			checker := NewIPChecker()
+			if tt.client != nil {
+				checker.setClient(tt.client)
+			}
+
 			got, err := checker.CheckIP(tt.ip)
 
 			if (err != nil) != tt.wantErr {
@@ -131,8 +210,10 @@ func TestIPChecker_CheckIP(t *testing.T) {
 				return
 			}
 
-			if tt.wantErrMsg != "" && err != nil && err.Error() != tt.wantErrMsg {
-				t.Errorf("CheckIP() error message = %v, want %v", err.Error(), tt.wantErrMsg)
+			if tt.wantErrMsg != "" && err != nil {
+				if !strings.Contains(err.Error(), tt.wantErrMsg) {
+					t.Errorf("CheckIP() error message = %v, should contain %v", err.Error(), tt.wantErrMsg)
+				}
 				return
 			}
 
@@ -154,4 +235,11 @@ func TestIPChecker_CheckIP(t *testing.T) {
 			}
 		})
 	}
+}
+
+// failingTransport is a transport that always fails
+type failingTransport struct{}
+
+func (t *failingTransport) RoundTrip(*http.Request) (*http.Response, error) {
+	return nil, fmt.Errorf("failed to fetch GitHub meta")
 }

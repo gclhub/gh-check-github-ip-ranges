@@ -11,21 +11,22 @@ var githubMetaURL = "https://api.github.com/meta"
 
 // GitHubMeta represents the response from GitHub's /meta API endpoint
 type GitHubMeta struct {
-	Hooks        []string `json:"hooks"`
-	Web          []string `json:"web"`
-	Api          []string `json:"api"`
-	Git          []string `json:"git"`
-	Packages     []string `json:"packages"`
-	Pages        []string `json:"pages"`
-	Importer     []string `json:"importer"`
-	Actions      []string `json:"actions"`
-	Dependabot   []string `json:"dependabot"`
-	ActionsIPv4  []string `json:"actions_ipv4"`
+	Hooks       []string `json:"hooks"`
+	Web         []string `json:"web"`
+	Api         []string `json:"api"`
+	Git         []string `json:"git"`
+	Packages    []string `json:"packages"`
+	Pages       []string `json:"pages"`
+	Importer    []string `json:"importer"`
+	Actions     []string `json:"actions"`
+	Dependabot  []string `json:"dependabot"`
+	ActionsIPv4 []string `json:"actions_ipv4"`
 }
 
 // IPChecker provides functionality to check IP addresses against GitHub's ranges
 type IPChecker struct {
-	meta *GitHubMeta
+	meta   *GitHubMeta
+	client *http.Client // Add client field
 }
 
 // CheckResult contains the result of an IP check
@@ -37,12 +38,19 @@ type CheckResult struct {
 
 // NewIPChecker creates a new IPChecker instance
 func NewIPChecker() *IPChecker {
-	return &IPChecker{}
+	return &IPChecker{
+		client: http.DefaultClient,
+	}
+}
+
+// For testing purposes
+func (c *IPChecker) setClient(client *http.Client) {
+	c.client = client
 }
 
 // fetchGitHubMeta fetches the IP ranges from GitHub's API
 func (c *IPChecker) fetchGitHubMeta() error {
-	resp, err := http.Get(githubMetaURL)
+	resp, err := c.client.Get(githubMetaURL) // Use injected client
 	if err != nil {
 		return fmt.Errorf("failed to fetch GitHub meta: %w", err)
 	}
