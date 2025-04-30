@@ -247,6 +247,20 @@ func TestMainFunction(t *testing.T) {
 			wantErr:  true,
 			silent:   true,
 		},
+		{
+			name:     "Version flag",
+			args:     []string{"gh-check-github-ip-ranges", "--version"},
+			wantCode: 0,
+			wantErr:  false,
+			silent:   false,
+		},
+		{
+			name:     "Version flag short form",
+			args:     []string{"gh-check-github-ip-ranges", "-v"},
+			wantCode: 0,
+			wantErr:  false,
+			silent:   false,
+		},
 	}
 
 	for _, tt := range tests {

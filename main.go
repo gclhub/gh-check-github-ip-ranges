@@ -7,6 +7,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// Version is the current version of gh-check-github-ip-ranges
+const Version = "v1.0.0"
+
 // For testing purposes
 var osExit = os.Exit
 
@@ -17,6 +20,7 @@ func main() {
 		Long: `Check if a given IP address is within GitHub's published IP ranges.
 The ranges are fetched from GitHub's /meta API endpoint. Only IPv4 addresses
 are supported at this time.`,
+		Version:       Version,
 		Args:          cobra.ExactArgs(1),
 		RunE:          runCommand,
 		SilenceUsage:  true,
