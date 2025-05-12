@@ -8,37 +8,15 @@ on:
 permissions:
   contents: write
   discussions: write
+  id-token: write
+  attestations: write
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Set up Go
-        uses: actions/setup-go@v5
+      - uses: cli/gh-extension-precompile@v2
         with:
-          go-version: '1.24'
-          
-      - name: Build binaries
-        run: |
-          # Build for Linux
-          GOOS=linux GOARCH=amd64 go build -o "gh-check-github-ip-ranges-linux-amd64"
-          GOOS=linux GOARCH=arm64 go build -o "gh-check-github-ip-ranges-linux-arm64"
-          
-          # Build for macOS
-          GOOS=darwin GOARCH=amd64 go build -o "gh-check-github-ip-ranges-darwin-amd64"
-          GOOS=darwin GOARCH=arm64 go build -o "gh-check-github-ip-ranges-darwin-arm64"
-          
-          # Build for Windows
-          GOOS=windows GOARCH=amd64 go build -o "gh-check-github-ip-ranges-windows-amd64.exe"
-          
-      - name: Create Release
-        uses: softprops/action-gh-release@v1
-        with:
-          files: |
-            gh-check-github-ip-ranges-linux-amd64
-            gh-check-github-ip-ranges-linux-arm64
-            gh-check-github-ip-ranges-darwin-amd64
-            gh-check-github-ip-ranges-darwin-arm64
-            gh-check-github-ip-ranges-windows-amd64.exe
+          generate_attestations: true
+          go_version_file: go.mod
