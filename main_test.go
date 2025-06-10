@@ -215,7 +215,7 @@ func TestMainFunction(t *testing.T) {
 		{
 			name:     "IPv6 address",
 			args:     []string{"gh-check-github-ip-ranges", "2001:db8::1"},
-			wantCode: 2,
+			wantCode: 1,
 			wantErr:  true,
 			silent:   false,
 		},

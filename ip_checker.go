@@ -21,6 +21,15 @@ type GitHubMeta struct {
 	Actions     []string `json:"actions"`
 	Dependabot  []string `json:"dependabot"`
 	ActionsIPv4 []string `json:"actions_ipv4"`
+	HooksIPv6       []string `json:"hooks_ipv6"`
+	WebIPv6         []string `json:"web_ipv6"`
+	ApiIPv6         []string `json:"api_ipv6"`
+	GitIPv6         []string `json:"git_ipv6"`
+	PackagesIPv6    []string `json:"packages_ipv6"`
+	PagesIPv6       []string `json:"pages_ipv6"`
+	ImporterIPv6    []string `json:"importer_ipv6"`
+	ActionsIPv6     []string `json:"actions_ipv6"`
+	DependabotIPv6  []string `json:"dependabot_ipv6"`
 }
 
 // IPChecker provides functionality to check IP addresses against GitHub's ranges
@@ -87,14 +96,25 @@ func (c *IPChecker) CheckIP(ipStr string) (*CheckResult, error) {
 		return nil, fmt.Errorf("invalid IP address format")
 	}
 
-	// Ensure it's an IPv4 address
-	ip = ip.To4()
-	if ip == nil {
-		return nil, fmt.Errorf("only IPv4 addresses are supported")
+	// Determine if this is IPv4 or IPv6
+	isIPv4 := ip.To4() != nil
+	
+	// For IPv4, use the original IP (converted to 4-byte representation)
+	// For IPv6, use the full IP address
+	var checkIP net.IP
+	if isIPv4 {
+		checkIP = ip.To4()
+	} else {
+		checkIP = ip
 	}
 
 	// Check if it's a public IP address
-	if ip.IsPrivate() || ip.IsLoopback() || ip.IsUnspecified() || ip.IsMulticast() || isBroadcastAddress(ip) {
+	if checkIP.IsPrivate() || checkIP.IsLoopback() || checkIP.IsUnspecified() || checkIP.IsMulticast() {
+		return nil, fmt.Errorf("IP address must be a public, routable address")
+	}
+	
+	// Additional check for IPv4 broadcast addresses
+	if isIPv4 && isBroadcastAddress(checkIP) {
 		return nil, fmt.Errorf("IP address must be a public, routable address")
 	}
 
@@ -105,21 +125,44 @@ func (c *IPChecker) CheckIP(ipStr string) (*CheckResult, error) {
 		}
 	}
 
-	// Check each range category
-	ranges := []struct {
+	// Select appropriate ranges based on IP version
+	var ranges []struct {
 		name   string
 		ranges []string
-	}{
-		{"Hooks", c.meta.Hooks},
-		{"Web", c.meta.Web},
-		{"API", c.meta.Api},
-		{"Git", c.meta.Git},
-		{"Packages", c.meta.Packages},
-		{"Pages", c.meta.Pages},
-		{"Importer", c.meta.Importer},
-		{"Actions", c.meta.Actions},
-		{"Dependabot", c.meta.Dependabot},
-		{"Actions IPv4", c.meta.ActionsIPv4},
+	}
+	
+	if isIPv4 {
+		ranges = []struct {
+			name   string
+			ranges []string
+		}{
+			{"Hooks", c.meta.Hooks},
+			{"Web", c.meta.Web},
+			{"API", c.meta.Api},
+			{"Git", c.meta.Git},
+			{"Packages", c.meta.Packages},
+			{"Pages", c.meta.Pages},
+			{"Importer", c.meta.Importer},
+			{"Actions", c.meta.Actions},
+			{"Dependabot", c.meta.Dependabot},
+			{"Actions IPv4", c.meta.ActionsIPv4},
+		}
+	} else {
+		// IPv6 ranges
+		ranges = []struct {
+			name   string
+			ranges []string
+		}{
+			{"Hooks IPv6", c.meta.HooksIPv6},
+			{"Web IPv6", c.meta.WebIPv6},
+			{"API IPv6", c.meta.ApiIPv6},
+			{"Git IPv6", c.meta.GitIPv6},
+			{"Packages IPv6", c.meta.PackagesIPv6},
+			{"Pages IPv6", c.meta.PagesIPv6},
+			{"Importer IPv6", c.meta.ImporterIPv6},
+			{"Actions IPv6", c.meta.ActionsIPv6},
+			{"Dependabot IPv6", c.meta.DependabotIPv6},
+		}
 	}
 
 	for _, category := range ranges {
@@ -129,7 +172,7 @@ func (c *IPChecker) CheckIP(ipStr string) (*CheckResult, error) {
 				continue
 			}
 
-			if ipNet.Contains(ip) {
+			if ipNet.Contains(checkIP) {
 				return &CheckResult{
 					IsGitHubIP:     true,
 					FunctionalArea: category.name,

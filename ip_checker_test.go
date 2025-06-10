@@ -28,6 +28,34 @@ func TestIPChecker_CheckIP(t *testing.T) {
 	}))
 	defer successServer.Close()
 
+	// Success case server with IPv6 ranges
+	ipv6Server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{
+			"hooks": ["192.30.252.0/22"],
+			"web": ["192.30.252.0/22"],
+			"api": ["192.30.252.0/22"],
+			"git": ["192.30.252.0/22"],
+			"packages": ["192.30.252.0/22"],
+			"pages": ["192.30.252.0/22"],
+			"importer": ["192.30.252.0/22"],
+			"actions": ["192.30.252.0/22"],
+			"dependabot": ["192.30.252.0/22"],
+			"actions_ipv4": ["192.30.252.0/22"],
+			"hooks_ipv6": ["2001:db8:1000::/40"],
+			"web_ipv6": ["2001:db8:2000::/40"],
+			"api_ipv6": ["2001:db8:3000::/40"],
+			"git_ipv6": ["2001:db8:4000::/40"],
+			"packages_ipv6": ["2001:db8:5000::/40"],
+			"pages_ipv6": ["2001:db8:6000::/40"],
+			"importer_ipv6": ["2001:db8:7000::/40"],
+			"actions_ipv6": ["2001:db8:8000::/40"],
+			"dependabot_ipv6": ["2001:db8:9000::/40"]
+		}`))
+	}))
+	defer ipv6Server.Close()
+
 	// Error case server - returns 500
 	errorServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -127,9 +155,10 @@ func TestIPChecker_CheckIP(t *testing.T) {
 			ip:         "2001:db8::1",
 			mockServer: successServer,
 			client:     nil,
-			wantErr:    true,
-			wantErrMsg: "only IPv4 addresses are supported",
-			want:       nil,
+			wantErr:    false,
+			want: &CheckResult{
+				IsGitHubIP: false,
+			},
 		},
 		{
 			name:       "Broadcast address",
@@ -188,6 +217,49 @@ func TestIPChecker_CheckIP(t *testing.T) {
 				FunctionalArea: "Git",
 				Range:          "192.30.252.0/22",
 			},
+		},
+		{
+			name:       "Valid IPv6 GitHub IP - Hooks",
+			ip:         "2001:db8:1000::1",
+			mockServer: ipv6Server,
+			client:     nil,
+			wantErr:    false,
+			want: &CheckResult{
+				IsGitHubIP:     true,
+				FunctionalArea: "Hooks IPv6",
+				Range:          "2001:db8:1000::/40",
+			},
+		},
+		{
+			name:       "Valid IPv6 GitHub IP - Actions",
+			ip:         "2001:db8:8000::100",
+			mockServer: ipv6Server,
+			client:     nil,
+			wantErr:    false,
+			want: &CheckResult{
+				IsGitHubIP:     true,
+				FunctionalArea: "Actions IPv6",
+				Range:          "2001:db8:8000::/40",
+			},
+		},
+		{
+			name:       "Non-GitHub IPv6",
+			ip:         "2001:db8:ffff::1",
+			mockServer: ipv6Server,
+			client:     nil,
+			wantErr:    false,
+			want: &CheckResult{
+				IsGitHubIP: false,
+			},
+		},
+		{
+			name:       "Private IPv6",
+			ip:         "fc00::1",
+			mockServer: ipv6Server,
+			client:     nil,
+			wantErr:    true,
+			wantErrMsg: "IP address must be a public, routable address",
+			want:       nil,
 		},
 	}
 

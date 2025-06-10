@@ -37,6 +37,11 @@ Check if an IP address belongs to GitHub:
 gh check-github-ip-ranges 192.30.252.1
 ```
 
+Check an IPv6 address:
+```bash
+gh check-github-ip-ranges 2001:db8:1000::1
+```
+
 Use in a script with silent mode:
 ```bash
 if gh check-github-ip-ranges -s 192.30.252.1; then
@@ -49,7 +54,7 @@ fi
 ## Features
 
 - Validates IP address format and routability
-- Checks IPv4 addresses against all GitHub IP ranges
+- Checks both IPv4 and IPv6 addresses against all GitHub IP ranges
 - Returns the specific functional area (Actions, API, Git, etc.) for GitHub IPs
 - Includes a silent mode for use in scripts
 - Supports all GitHub IP range categories from the /meta API endpoint
