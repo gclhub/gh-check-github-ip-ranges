@@ -317,3 +317,75 @@ func TestMainFunction(t *testing.T) {
 		})
 	}
 }
+
+// Test command execution with too many arguments
+func TestMainFunction_TooManyArguments(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"hooks": ["192.30.252.0/22"]}`))
+	}))
+	defer server.Close()
+
+	oldArgs := os.Args
+	oldURL := githubMetaURL
+	oldOsExit := osExit
+	defer func() {
+		os.Args = oldArgs
+		githubMetaURL = oldURL
+		osExit = oldOsExit
+	}()
+
+	githubMetaURL = server.URL
+
+	exitCode := make(chan int, 1)
+	osExit = func(code int) {
+		exitCode <- code
+	}
+
+	os.Args = []string{"gh-check-github-ip-ranges", "192.30.252.1", "extra-arg"}
+
+	go func() {
+		main()
+		exitCode <- 0
+	}()
+
+	code := <-exitCode
+	if code != 2 {
+		t.Errorf("main() with too many arguments exitCode = %v, want 2", code)
+	}
+}
+
+// Test command with flag parsing edge cases
+func TestRunCommand_FlagEdgeCases(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"hooks": ["192.30.252.0/22"]}`))
+	}))
+	defer server.Close()
+
+	oldURL := githubMetaURL
+	githubMetaURL = server.URL
+	defer func() { githubMetaURL = oldURL }()
+
+	// Test silent flag with long form
+	cmd := &cobra.Command{}
+	cmd.Flags().BoolP("silent", "s", false, "")
+	cmd.Flags().Set("silent", "true")
+
+	err := runCommand(cmd, []string{"192.30.252.1"})
+	if err != nil {
+		t.Errorf("runCommand with silent=true should not error for GitHub IP, got: %v", err)
+	}
+
+	// Test with explicitly set silent to false
+	cmd2 := &cobra.Command{}
+	cmd2.Flags().BoolP("silent", "s", false, "")
+	cmd2.Flags().Set("silent", "false")
+
+	err = runCommand(cmd2, []string{"192.30.252.1"})
+	if err != nil {
+		t.Errorf("runCommand with silent=false should not error for GitHub IP, got: %v", err)
+	}
+}
