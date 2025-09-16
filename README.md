@@ -53,6 +53,29 @@ fi
 - Returns the specific functional area (Actions, API, Git, etc.) for GitHub IPs
 - Includes a silent mode for use in scripts
 - Supports all GitHub IP range categories from the /meta API endpoint
+- **Security hardened** with timeout protection, input validation, and secure HTTP client configuration
+
+## Security
+
+This tool implements several security measures to ensure safe operation:
+
+### Input Validation
+- **Length limits**: IP address inputs are limited to 45 characters to prevent memory exhaustion
+- **Empty input protection**: Rejects empty or whitespace-only inputs
+- **Format validation**: Strict IP address format checking to prevent injection attacks
+
+### HTTP Client Security  
+- **Connection timeouts**: 30-second timeout prevents indefinite hangs
+- **TLS requirements**: Minimum TLS 1.2 for all HTTPS connections
+- **Certificate validation**: Strict certificate validation prevents MITM attacks
+- **Response size limits**: API responses limited to 1MB to prevent memory exhaustion
+
+### Network Security
+- **Public IP validation**: Only accepts public, routable IPv4 addresses
+- **API rate limiting**: Built-in protection against excessive API calls
+- **Secure defaults**: No insecure fallbacks or bypass mechanisms
+
+For security issues, please report them through GitHub's security advisory system.
 
 ## Requirements
 

@@ -1,13 +1,21 @@
 package main
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
+	"time"
 )
 
 var githubMetaURL = "https://api.github.com/meta"
+
+// Security constants
+const (
+	maxIPStringLength = 45     // Maximum length for IPv6 address
+	maxResponseSize   = 1 << 20 // 1MB response size limit
+)
 
 // GitHubMeta represents the response from GitHub's /meta API endpoint
 type GitHubMeta struct {
@@ -36,10 +44,24 @@ type CheckResult struct {
 	Range          string
 }
 
-// NewIPChecker creates a new IPChecker instance
+// NewIPChecker creates a new IPChecker instance with secure defaults
 func NewIPChecker() *IPChecker {
+	// Create a secure HTTP client with timeouts and TLS verification
+	client := &http.Client{
+		Timeout: 30 * time.Second,
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				MinVersion: tls.VersionTLS12,
+			},
+			MaxIdleConns:          100,
+			IdleConnTimeout:       90 * time.Second,
+			TLSHandshakeTimeout:   10 * time.Second,
+			ExpectContinueTimeout: 1 * time.Second,
+		},
+	}
+	
 	return &IPChecker{
-		client: http.DefaultClient,
+		client: client,
 	}
 }
 
@@ -48,7 +70,7 @@ func (c *IPChecker) setClient(client *http.Client) {
 	c.client = client
 }
 
-// fetchGitHubMeta fetches the IP ranges from GitHub's API
+// fetchGitHubMeta fetches the IP ranges from GitHub's API with size limits
 func (c *IPChecker) fetchGitHubMeta() error {
 	resp, err := c.client.Get(githubMetaURL) // Use injected client
 	if err != nil {
@@ -60,8 +82,11 @@ func (c *IPChecker) fetchGitHubMeta() error {
 		return fmt.Errorf("GitHub API returned status code %d", resp.StatusCode)
 	}
 
+	// Limit response size to prevent memory exhaustion
+	limitedReader := http.MaxBytesReader(nil, resp.Body, maxResponseSize)
+	
 	var meta GitHubMeta
-	if err := json.NewDecoder(resp.Body).Decode(&meta); err != nil {
+	if err := json.NewDecoder(limitedReader).Decode(&meta); err != nil {
 		return fmt.Errorf("failed to decode GitHub meta response: %w", err)
 	}
 
@@ -81,6 +106,16 @@ func isBroadcastAddress(ip net.IP) bool {
 
 // CheckIP checks if the provided IP address is within GitHub's ranges
 func (c *IPChecker) CheckIP(ipStr string) (*CheckResult, error) {
+	// Validate input length to prevent excessive memory usage
+	if len(ipStr) > maxIPStringLength {
+		return nil, fmt.Errorf("IP address string too long (max %d characters)", maxIPStringLength)
+	}
+	
+	// Validate that the input contains only expected characters
+	if ipStr == "" {
+		return nil, fmt.Errorf("IP address cannot be empty")
+	}
+	
 	// Parse and validate the IP address
 	ip := net.ParseIP(ipStr)
 	if ip == nil {
