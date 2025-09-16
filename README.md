@@ -74,6 +74,7 @@ This tool implements several security measures to ensure safe operation:
 - **Public IP validation**: Only accepts public, routable IPv4 addresses
 - **API rate limiting**: Built-in protection against excessive API calls
 - **Secure defaults**: No insecure fallbacks or bypass mechanisms
+- **Concurrent safety**: Thread-safe operations with proper mutex synchronization
 
 For security issues, please report them through GitHub's security advisory system.
 

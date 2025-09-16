@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"sync"
 	"time"
 )
 
@@ -34,7 +35,8 @@ type GitHubMeta struct {
 // IPChecker provides functionality to check IP addresses against GitHub's ranges
 type IPChecker struct {
 	meta   *GitHubMeta
-	client *http.Client // Add client field
+	client *http.Client
+	mutex  sync.RWMutex // Protects concurrent access to meta
 }
 
 // CheckResult contains the result of an IP check
@@ -90,7 +92,11 @@ func (c *IPChecker) fetchGitHubMeta() error {
 		return fmt.Errorf("failed to decode GitHub meta response: %w", err)
 	}
 
+	// Thread-safe assignment
+	c.mutex.Lock()
 	c.meta = &meta
+	c.mutex.Unlock()
+	
 	return nil
 }
 
@@ -133,11 +139,24 @@ func (c *IPChecker) CheckIP(ipStr string) (*CheckResult, error) {
 		return nil, fmt.Errorf("IP address must be a public, routable address")
 	}
 
+	// Check if meta is already cached (thread-safe read)
+	c.mutex.RLock()
+	metaCached := c.meta != nil
+	var metaCopy *GitHubMeta
+	if metaCached {
+		metaCopy = c.meta // Safe to copy pointer while holding read lock
+	}
+	c.mutex.RUnlock()
+
 	// Fetch GitHub meta if not already cached
-	if c.meta == nil {
+	if !metaCached {
 		if err := c.fetchGitHubMeta(); err != nil {
 			return nil, fmt.Errorf("failed to fetch GitHub meta: %w", err)
 		}
+		// Get the meta again after fetching
+		c.mutex.RLock()
+		metaCopy = c.meta
+		c.mutex.RUnlock()
 	}
 
 	// Check each range category
@@ -145,16 +164,16 @@ func (c *IPChecker) CheckIP(ipStr string) (*CheckResult, error) {
 		name   string
 		ranges []string
 	}{
-		{"Hooks", c.meta.Hooks},
-		{"Web", c.meta.Web},
-		{"API", c.meta.Api},
-		{"Git", c.meta.Git},
-		{"Packages", c.meta.Packages},
-		{"Pages", c.meta.Pages},
-		{"Importer", c.meta.Importer},
-		{"Actions", c.meta.Actions},
-		{"Dependabot", c.meta.Dependabot},
-		{"Actions IPv4", c.meta.ActionsIPv4},
+		{"Hooks", metaCopy.Hooks},
+		{"Web", metaCopy.Web},
+		{"API", metaCopy.Api},
+		{"Git", metaCopy.Git},
+		{"Packages", metaCopy.Packages},
+		{"Pages", metaCopy.Pages},
+		{"Importer", metaCopy.Importer},
+		{"Actions", metaCopy.Actions},
+		{"Dependabot", metaCopy.Dependabot},
+		{"Actions IPv4", metaCopy.ActionsIPv4},
 	}
 
 	for _, category := range ranges {
