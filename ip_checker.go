@@ -3,8 +3,10 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
+	"time"
 )
 
 var githubMetaURL = "https://api.github.com/meta"
@@ -39,7 +41,21 @@ type CheckResult struct {
 // NewIPChecker creates a new IPChecker instance
 func NewIPChecker() *IPChecker {
 	return &IPChecker{
-		client: http.DefaultClient,
+		client: &http.Client{
+			Timeout: 30 * time.Second,
+			Transport: &http.Transport{
+				DialContext: (&net.Dialer{
+					Timeout:   10 * time.Second,
+					KeepAlive: 30 * time.Second,
+				}).DialContext,
+				TLSHandshakeTimeout:   10 * time.Second,
+				ResponseHeaderTimeout: 10 * time.Second,
+				ExpectContinueTimeout: 1 * time.Second,
+				MaxIdleConns:          100,
+				IdleConnTimeout:       90 * time.Second,
+				DisableCompression:    false,
+			},
+		},
 	}
 }
 
@@ -52,7 +68,7 @@ func (c *IPChecker) setClient(client *http.Client) {
 func (c *IPChecker) fetchGitHubMeta() error {
 	resp, err := c.client.Get(githubMetaURL) // Use injected client
 	if err != nil {
-		return fmt.Errorf("failed to fetch GitHub meta: %w", err)
+		return fmt.Errorf("failed to fetch GitHub meta: network error occurred")
 	}
 	defer resp.Body.Close()
 
@@ -60,9 +76,13 @@ func (c *IPChecker) fetchGitHubMeta() error {
 		return fmt.Errorf("GitHub API returned status code %d", resp.StatusCode)
 	}
 
+	// Limit response body size to prevent memory exhaustion attacks
+	const maxResponseSize = 1024 * 1024 // 1MB limit
+	limitedReader := &io.LimitedReader{R: resp.Body, N: maxResponseSize}
+
 	var meta GitHubMeta
-	if err := json.NewDecoder(resp.Body).Decode(&meta); err != nil {
-		return fmt.Errorf("failed to decode GitHub meta response: %w", err)
+	if err := json.NewDecoder(limitedReader).Decode(&meta); err != nil {
+		return fmt.Errorf("failed to decode GitHub meta response: invalid response format")
 	}
 
 	c.meta = &meta
@@ -101,7 +121,7 @@ func (c *IPChecker) CheckIP(ipStr string) (*CheckResult, error) {
 	// Fetch GitHub meta if not already cached
 	if c.meta == nil {
 		if err := c.fetchGitHubMeta(); err != nil {
-			return nil, fmt.Errorf("failed to fetch GitHub meta: %w", err)
+			return nil, fmt.Errorf("failed to fetch GitHub IP ranges")
 		}
 	}
 

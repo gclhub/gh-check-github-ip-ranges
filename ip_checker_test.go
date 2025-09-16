@@ -162,7 +162,7 @@ func TestIPChecker_CheckIP(t *testing.T) {
 			mockServer: successServer,
 			client:     failingClient,
 			wantErr:    true,
-			wantErrMsg: "failed to fetch GitHub meta",
+			wantErrMsg: "failed to fetch GitHub IP ranges",
 			want:       nil,
 		},
 		{
