@@ -23,7 +23,12 @@ func TestIPChecker_CheckIP(t *testing.T) {
 			"importer": ["192.30.252.0/22"],
 			"actions": ["192.30.252.0/22"],
 			"dependabot": ["192.30.252.0/22"],
-			"actions_ipv4": ["192.30.252.0/22"]
+			"actions_ipv4": ["192.30.252.0/22"],
+			"web_ipv6": ["2001:db8::/32"],
+			"api_ipv6": ["2001:db8::/32"],
+			"git_ipv6": ["2001:db8::/32"],
+			"pages_ipv6": ["2001:db8::/32"],
+			"actions_ipv6": ["2001:db8::/32"]
 		}`))
 	}))
 	defer successServer.Close()
@@ -123,13 +128,16 @@ func TestIPChecker_CheckIP(t *testing.T) {
 			want:       nil,
 		},
 		{
-			name:       "IPv6 address",
+			name:       "Valid IPv6 GitHub IP",
 			ip:         "2001:db8::1",
 			mockServer: successServer,
 			client:     nil,
-			wantErr:    true,
-			wantErrMsg: "only IPv4 addresses are supported",
-			want:       nil,
+			wantErr:    false,
+			want: &CheckResult{
+				IsGitHubIP:     true,
+				FunctionalArea: "Web IPv6",
+				Range:          "2001:db8::/32",
+			},
 		},
 		{
 			name:       "Broadcast address",
@@ -188,6 +196,34 @@ func TestIPChecker_CheckIP(t *testing.T) {
 				FunctionalArea: "Git",
 				Range:          "192.30.252.0/22",
 			},
+		},
+		{
+			name:       "Non-GitHub IPv6 IP",
+			ip:         "2001:470:8b2d::1",
+			mockServer: successServer,
+			client:     nil,
+			wantErr:    false,
+			want: &CheckResult{
+				IsGitHubIP: false,
+			},
+		},
+		{
+			name:       "Private IPv6 address",
+			ip:         "fe80::1",
+			mockServer: successServer,
+			client:     nil,
+			wantErr:    true,
+			wantErrMsg: "IP address must be a public, routable address",
+			want:       nil,
+		},
+		{
+			name:       "IPv6 loopback address",
+			ip:         "::1",
+			mockServer: successServer,
+			client:     nil,
+			wantErr:    true,
+			wantErrMsg: "IP address must be a public, routable address",
+			want:       nil,
 		},
 	}
 

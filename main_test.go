@@ -83,7 +83,12 @@ func TestRunCommand(t *testing.T) {
 			"importer": ["192.30.252.0/22"],
 			"actions": ["192.30.252.0/22"],
 			"dependabot": ["192.30.252.0/22"],
-			"actions_ipv4": ["192.30.252.0/22"]
+			"actions_ipv4": ["192.30.252.0/22"],
+			"web_ipv6": ["2001:db8::/32"],
+			"api_ipv6": ["2001:db8::/32"],
+			"git_ipv6": ["2001:db8::/32"],
+			"pages_ipv6": ["2001:db8::/32"],
+			"actions_ipv6": ["2001:db8::/32"]
 		}`))
 	}))
 	defer server.Close()
@@ -159,7 +164,12 @@ func TestMainFunction(t *testing.T) {
 			"importer": ["192.30.252.0/22"],
 			"actions": ["192.30.252.0/22"],
 			"dependabot": ["192.30.252.0/22"],
-			"actions_ipv4": ["192.30.252.0/22"]
+			"actions_ipv4": ["192.30.252.0/22"],
+			"web_ipv6": ["2001:db8::/32"],
+			"api_ipv6": ["2001:db8::/32"],
+			"git_ipv6": ["2001:db8::/32"],
+			"pages_ipv6": ["2001:db8::/32"],
+			"actions_ipv6": ["2001:db8::/32"]
 		}`))
 	}))
 	defer server.Close()
@@ -215,8 +225,8 @@ func TestMainFunction(t *testing.T) {
 		{
 			name:     "IPv6 address",
 			args:     []string{"gh-check-github-ip-ranges", "2001:db8::1"},
-			wantCode: 2,
-			wantErr:  true,
+			wantCode: 0,
+			wantErr:  false,
 			silent:   false,
 		},
 		{

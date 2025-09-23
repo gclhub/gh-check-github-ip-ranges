@@ -21,6 +21,11 @@ type GitHubMeta struct {
 	Actions     []string `json:"actions"`
 	Dependabot  []string `json:"dependabot"`
 	ActionsIPv4 []string `json:"actions_ipv4"`
+	WebIPv6     []string `json:"web_ipv6"`
+	ApiIPv6     []string `json:"api_ipv6"`
+	GitIPv6     []string `json:"git_ipv6"`
+	PagesIPv6   []string `json:"pages_ipv6"`
+	ActionsIPv6 []string `json:"actions_ipv6"`
 }
 
 // IPChecker provides functionality to check IP addresses against GitHub's ranges
@@ -87,15 +92,24 @@ func (c *IPChecker) CheckIP(ipStr string) (*CheckResult, error) {
 		return nil, fmt.Errorf("invalid IP address format")
 	}
 
-	// Ensure it's an IPv4 address
-	ip = ip.To4()
-	if ip == nil {
-		return nil, fmt.Errorf("only IPv4 addresses are supported")
-	}
-
-	// Check if it's a public IP address
-	if ip.IsPrivate() || ip.IsLoopback() || ip.IsUnspecified() || ip.IsMulticast() || isBroadcastAddress(ip) {
-		return nil, fmt.Errorf("IP address must be a public, routable address")
+	// Determine if it's IPv4 or IPv6
+	isIPv4 := ip.To4() != nil
+	var validIP net.IP
+	
+	if isIPv4 {
+		validIP = ip.To4()
+		// Check if it's a public IPv4 address
+		if validIP.IsPrivate() || validIP.IsLoopback() || validIP.IsUnspecified() || validIP.IsMulticast() || isBroadcastAddress(validIP) {
+			return nil, fmt.Errorf("IP address must be a public, routable address")
+		}
+	} else {
+		validIP = ip.To16()
+		// Check if it's a public IPv6 address
+		// Note: Go's IsPrivate() doesn't cover IPv6 link-local addresses (fe80::/10)
+		isLinkLocal := validIP != nil && len(validIP) == 16 && validIP[0] == 0xfe && (validIP[1]&0xc0) == 0x80
+		if validIP.IsPrivate() || validIP.IsLoopback() || validIP.IsUnspecified() || validIP.IsMulticast() || isLinkLocal {
+			return nil, fmt.Errorf("IP address must be a public, routable address")
+		}
 	}
 
 	// Fetch GitHub meta if not already cached
@@ -105,21 +119,39 @@ func (c *IPChecker) CheckIP(ipStr string) (*CheckResult, error) {
 		}
 	}
 
-	// Check each range category
-	ranges := []struct {
+	// Check each range category based on IP version
+	var ranges []struct {
 		name   string
 		ranges []string
-	}{
-		{"Hooks", c.meta.Hooks},
-		{"Web", c.meta.Web},
-		{"API", c.meta.Api},
-		{"Git", c.meta.Git},
-		{"Packages", c.meta.Packages},
-		{"Pages", c.meta.Pages},
-		{"Importer", c.meta.Importer},
-		{"Actions", c.meta.Actions},
-		{"Dependabot", c.meta.Dependabot},
-		{"Actions IPv4", c.meta.ActionsIPv4},
+	}
+	
+	if isIPv4 {
+		ranges = []struct {
+			name   string
+			ranges []string
+		}{
+			{"Hooks", c.meta.Hooks},
+			{"Web", c.meta.Web},
+			{"API", c.meta.Api},
+			{"Git", c.meta.Git},
+			{"Packages", c.meta.Packages},
+			{"Pages", c.meta.Pages},
+			{"Importer", c.meta.Importer},
+			{"Actions", c.meta.Actions},
+			{"Dependabot", c.meta.Dependabot},
+			{"Actions IPv4", c.meta.ActionsIPv4},
+		}
+	} else {
+		ranges = []struct {
+			name   string
+			ranges []string
+		}{
+			{"Web IPv6", c.meta.WebIPv6},
+			{"API IPv6", c.meta.ApiIPv6},
+			{"Git IPv6", c.meta.GitIPv6},
+			{"Pages IPv6", c.meta.PagesIPv6},
+			{"Actions IPv6", c.meta.ActionsIPv6},
+		}
 	}
 
 	for _, category := range ranges {
@@ -129,7 +161,7 @@ func (c *IPChecker) CheckIP(ipStr string) (*CheckResult, error) {
 				continue
 			}
 
-			if ipNet.Contains(ip) {
+			if ipNet.Contains(validIP) {
 				return &CheckResult{
 					IsGitHubIP:     true,
 					FunctionalArea: category.name,

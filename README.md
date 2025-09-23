@@ -24,8 +24,7 @@ gh check-github-ip-ranges <ip-address>
 - `1`: IP address does not belong to GitHub
 - `2`: Invalid input or error condition:
   - Invalid IP address format
-  - Non-IPv4 address (IPv6 is not supported)
-  - Private, loopback, multicast, or broadcast IP addresses
+  - Non-public IP address (private, loopback, multicast, or broadcast for IPv4; private, loopback, multicast, or link-local for IPv6)
   - Network errors when fetching GitHub IP ranges
   - API errors from GitHub's meta endpoint
   - Missing command line arguments
@@ -35,6 +34,11 @@ gh check-github-ip-ranges <ip-address>
 Check if an IP address belongs to GitHub:
 ```bash
 gh check-github-ip-ranges 192.30.252.1
+```
+
+Check an IPv6 address:
+```bash
+gh check-github-ip-ranges 2001:db8::1
 ```
 
 Use in a script with silent mode:
@@ -49,7 +53,7 @@ fi
 ## Features
 
 - Validates IP address format and routability
-- Checks IPv4 addresses against all GitHub IP ranges
+- Checks IPv4 and IPv6 addresses against all GitHub IP ranges
 - Returns the specific functional area (Actions, API, Git, etc.) for GitHub IPs
 - Includes a silent mode for use in scripts
 - Supports all GitHub IP range categories from the /meta API endpoint
