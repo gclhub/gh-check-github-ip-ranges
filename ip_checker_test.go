@@ -28,6 +28,34 @@ func TestIPChecker_CheckIP(t *testing.T) {
 	}))
 	defer successServer.Close()
 
+	// Server with IPv6 ranges
+	ipv6Server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{
+			"hooks": ["192.30.252.0/22"],
+			"web": ["192.30.252.0/22"],
+			"api": ["192.30.252.0/22"],
+			"git": ["192.30.252.0/22"],
+			"packages": ["192.30.252.0/22"],
+			"pages": ["192.30.252.0/22"],
+			"importer": ["192.30.252.0/22"],
+			"actions": ["192.30.252.0/22"],
+			"dependabot": ["192.30.252.0/22"],
+			"actions_ipv4": ["192.30.252.0/22"],
+			"hooks_ipv6": ["2001:db8::/32"],
+			"web_ipv6": ["2001:db8::/32"],
+			"api_ipv6": ["2001:db8::/32"],
+			"git_ipv6": ["2001:db8::/32"],
+			"packages_ipv6": ["2001:db8::/32"],
+			"pages_ipv6": ["2001:db8::/32"],
+			"importer_ipv6": ["2001:db8::/32"],
+			"actions_ipv6": ["2001:db8::/32"],
+			"dependabot_ipv6": ["2001:db8::/32"]
+		}`))
+	}))
+	defer ipv6Server.Close()
+
 	// Error case server - returns 500
 	errorServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -123,13 +151,26 @@ func TestIPChecker_CheckIP(t *testing.T) {
 			want:       nil,
 		},
 		{
-			name:       "IPv6 address",
+			name:       "IPv6 address - Non-GitHub",
 			ip:         "2001:db8::1",
 			mockServer: successServer,
 			client:     nil,
-			wantErr:    true,
-			wantErrMsg: "only IPv4 addresses are supported",
-			want:       nil,
+			wantErr:    false,
+			want: &CheckResult{
+				IsGitHubIP: false,
+			},
+		},
+		{
+			name:       "Valid GitHub IPv6",
+			ip:         "2001:db8::1",
+			mockServer: ipv6Server,
+			client:     nil,
+			wantErr:    false,
+			want: &CheckResult{
+				IsGitHubIP:     true,
+				FunctionalArea: "Hooks IPv6",
+				Range:          "2001:db8::/32",
+			},
 		},
 		{
 			name:       "Broadcast address",
