@@ -18,7 +18,7 @@ func main() {
 		Use:   "gh-check-github-ip-ranges <ip-address>",
 		Short: "Check if an IP address is within GitHub's published IP ranges",
 		Long: `Check if a given IP address is within GitHub's published IP ranges.
-The ranges are fetched from GitHub's /meta API endpoint. Both IPv4 and IPv6 
+The ranges are fetched from GitHub's /meta API endpoint. Both IPv4 and IPv6
 addresses are supported.`,
 		Version:       Version,
 		Args:          cobra.ExactArgs(1),
