@@ -23,7 +23,16 @@ func TestIPChecker_CheckIP(t *testing.T) {
 			"importer": ["192.30.252.0/22"],
 			"actions": ["192.30.252.0/22"],
 			"dependabot": ["192.30.252.0/22"],
-			"actions_ipv4": ["192.30.252.0/22"]
+			"actions_ipv4": ["192.30.252.0/22"],
+			"hooks_ipv6": ["2001:4000::/23"],
+			"web_ipv6": ["2001:4000::/23"],
+			"api_ipv6": ["2001:4000::/23"],
+			"git_ipv6": ["2001:4000::/23"],
+			"packages_ipv6": ["2001:4000::/23"],
+			"pages_ipv6": ["2001:4000::/23"],
+			"importer_ipv6": ["2001:4000::/23"],
+			"actions_ipv6": ["2001:4000::/23"],
+			"dependabot_ipv6": ["2001:4000::/23"]
 		}`))
 	}))
 	defer successServer.Close()
@@ -123,12 +132,12 @@ func TestIPChecker_CheckIP(t *testing.T) {
 			want:       nil,
 		},
 		{
-			name:       "IPv6 address",
+			name:       "IPv6 documentation address",
 			ip:         "2001:db8::1",
 			mockServer: successServer,
 			client:     nil,
 			wantErr:    true,
-			wantErrMsg: "only IPv4 addresses are supported",
+			wantErrMsg: "IP address must be a public, routable address",
 			want:       nil,
 		},
 		{
@@ -188,6 +197,56 @@ func TestIPChecker_CheckIP(t *testing.T) {
 				FunctionalArea: "Git",
 				Range:          "192.30.252.0/22",
 			},
+		},
+		// IPv6 test cases
+		{
+			name:       "Valid GitHub IPv6 IP",
+			ip:         "2001:4000::1",
+			mockServer: successServer,
+			client:     nil,
+			wantErr:    false,
+			want: &CheckResult{
+				IsGitHubIP:     true,
+				FunctionalArea: "Hooks",
+				Range:          "2001:4000::/23",
+			},
+		},
+		{
+			name:       "Non-GitHub IPv6 IP",
+			ip:         "2001:4200::1",
+			mockServer: successServer,
+			client:     nil,
+			wantErr:    false,
+			want: &CheckResult{
+				IsGitHubIP: false,
+			},
+		},
+		{
+			name:       "IPv6 link-local address",
+			ip:         "fe80::1",
+			mockServer: successServer,
+			client:     nil,
+			wantErr:    true,
+			wantErrMsg: "IP address must be a public, routable address",
+			want:       nil,
+		},
+		{
+			name:       "IPv6 unique local address",
+			ip:         "fc00::1",
+			mockServer: successServer,
+			client:     nil,
+			wantErr:    true,
+			wantErrMsg: "IP address must be a public, routable address",
+			want:       nil,
+		},
+		{
+			name:       "IPv6 loopback address",
+			ip:         "::1",
+			mockServer: successServer,
+			client:     nil,
+			wantErr:    true,
+			wantErrMsg: "IP address must be a public, routable address",
+			want:       nil,
 		},
 	}
 

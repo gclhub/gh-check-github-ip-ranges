@@ -67,6 +67,31 @@ func TestRunCommand(t *testing.T) {
 			wantStdout: "",
 			wantStderr: "", // Error message is handled by main(), not runCommand
 		},
+		// IPv6 test cases
+		{
+			name:       "GitHub IPv6 IP with silent mode",
+			args:       []string{"2001:4000::1"},
+			silent:     true,
+			wantError:  false,
+			wantStdout: "",
+			wantStderr: "",
+		},
+		{
+			name:       "GitHub IPv6 IP without silent mode",
+			args:       []string{"2001:4000::1"},
+			silent:     false,
+			wantError:  false,
+			wantStdout: "IP 2001:4000::1 belongs to GitHub's Hooks range (2001:4000::/23)\n",
+			wantStderr: "",
+		},
+		{
+			name:       "Non-GitHub IPv6 IP",
+			args:       []string{"2001:4200::1"},
+			silent:     false,
+			wantError:  true,
+			wantStdout: "",
+			wantStderr: "", // Error message is handled by main(), not runCommand
+		},
 	}
 
 	// Mock server for GitHub meta API
@@ -83,7 +108,16 @@ func TestRunCommand(t *testing.T) {
 			"importer": ["192.30.252.0/22"],
 			"actions": ["192.30.252.0/22"],
 			"dependabot": ["192.30.252.0/22"],
-			"actions_ipv4": ["192.30.252.0/22"]
+			"actions_ipv4": ["192.30.252.0/22"],
+			"hooks_ipv6": ["2001:4000::/23"],
+			"web_ipv6": ["2001:4000::/23"],
+			"api_ipv6": ["2001:4000::/23"],
+			"git_ipv6": ["2001:4000::/23"],
+			"packages_ipv6": ["2001:4000::/23"],
+			"pages_ipv6": ["2001:4000::/23"],
+			"importer_ipv6": ["2001:4000::/23"],
+			"actions_ipv6": ["2001:4000::/23"],
+			"dependabot_ipv6": ["2001:4000::/23"]
 		}`))
 	}))
 	defer server.Close()
@@ -159,7 +193,16 @@ func TestMainFunction(t *testing.T) {
 			"importer": ["192.30.252.0/22"],
 			"actions": ["192.30.252.0/22"],
 			"dependabot": ["192.30.252.0/22"],
-			"actions_ipv4": ["192.30.252.0/22"]
+			"actions_ipv4": ["192.30.252.0/22"],
+			"hooks_ipv6": ["2001:4000::/23"],
+			"web_ipv6": ["2001:4000::/23"],
+			"api_ipv6": ["2001:4000::/23"],
+			"git_ipv6": ["2001:4000::/23"],
+			"packages_ipv6": ["2001:4000::/23"],
+			"pages_ipv6": ["2001:4000::/23"],
+			"importer_ipv6": ["2001:4000::/23"],
+			"actions_ipv6": ["2001:4000::/23"],
+			"dependabot_ipv6": ["2001:4000::/23"]
 		}`))
 	}))
 	defer server.Close()
@@ -259,6 +302,28 @@ func TestMainFunction(t *testing.T) {
 			args:     []string{"gh-check-github-ip-ranges", "-v"},
 			wantCode: 0,
 			wantErr:  false,
+			silent:   false,
+		},
+		// IPv6 test cases
+		{
+			name:     "Valid GitHub IPv6 IP",
+			args:     []string{"gh-check-github-ip-ranges", "2001:4000::1"},
+			wantCode: 0,
+			wantErr:  false,
+			silent:   false,
+		},
+		{
+			name:     "Non-GitHub IPv6 IP",
+			args:     []string{"gh-check-github-ip-ranges", "2001:4200::1"},
+			wantCode: 1,
+			wantErr:  true,
+			silent:   false,
+		},
+		{
+			name:     "IPv6 link-local address",
+			args:     []string{"gh-check-github-ip-ranges", "fe80::1"},
+			wantCode: 2,
+			wantErr:  true,
 			silent:   false,
 		},
 	}
