@@ -8,7 +8,7 @@ import (
 )
 
 // Version is the current version of gh-check-github-ip-ranges
-const Version = "v1.0.0"
+const Version = "v1.1.0"
 
 // For testing purposes
 var osExit = os.Exit
