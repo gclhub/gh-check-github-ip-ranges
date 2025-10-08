@@ -112,7 +112,7 @@ flowchart TD
 
 ### Input Data
 ```go
-// Command line input from Cobra
+// Command line input parsed by Cobra framework
 ipAddress string      // IP address argument from CLI
 silent    bool        // Silent mode flag (-s, --silent)
 ```
