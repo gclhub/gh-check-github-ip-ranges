@@ -84,7 +84,7 @@ flowchart TD
     CheckPublic -->|Yes| FetchMeta[Fetch GitHub Meta API]
     FetchMeta --> APISuccess{API call successful?}
     APISuccess -->|No| ErrorExit5[Exit with code 2:<br/>API error]
-    APISuccess -->|Yes| CheckRanges[Check IP against all ranges:<br/>Hooks, Web, API, Git, Packages,<br/>Pages, Importer, Actions,<br/>Dependabot, Actions IPv4]
+    APISuccess -->|Yes| CheckRanges[Check IP against all GitHub service ranges]
     CheckRanges --> MatchFound{Match found?}
     MatchFound -->|No| ErrorExit6[Exit with code 1:<br/>Not a GitHub IP]
     MatchFound -->|Yes| SilentMode{Silent mode?}
