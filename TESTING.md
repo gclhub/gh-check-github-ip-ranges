@@ -11,7 +11,7 @@ Tests for the IP checker functionality that validates and checks IP addresses ag
 
 **Test Function: `TestIPChecker_CheckIP`**
 
-This comprehensive test validates the core IP checking logic with 11 different test cases:
+This comprehensive test function validates the core IP checking logic with 11 different test cases (all within a single table-driven test):
 
 1. **Valid GitHub IP** - Verifies that a known GitHub IP (192.30.252.1) is correctly identified and returns the appropriate functional area (Hooks) and CIDR range.
 
