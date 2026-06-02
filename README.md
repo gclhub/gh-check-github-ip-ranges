@@ -57,7 +57,7 @@ fi
 ## Requirements
 
 - GitHub CLI (`gh`) version 2.0.0 or higher
-- Go 1.16 or higher (for development)
+- Go 1.24.2 or higher (for development)
 
 ## Documentation
 
