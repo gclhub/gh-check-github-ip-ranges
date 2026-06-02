@@ -118,8 +118,8 @@ go test ./...       # Run all tests
 ### Implementation for User Story 4
 
 - [x] T030 [US4] Check `resp.StatusCode != http.StatusOK` → return error with status code in `ip_checker.go`
-- [x] T031 [US4] Wrap JSON decode errors with `fmt.Errorf("failed to decode: %w", err)` in `ip_checker.go`
-- [x] T032 [US4] Wrap HTTP client errors with `fmt.Errorf("failed to fetch: %w", err)` in `ip_checker.go`
+- [x] T031 [US4] Wrap JSON decode errors with `fmt.Errorf("failed to decode GitHub meta response: %w", err)` in `ip_checker.go`
+- [x] T032 [US4] Wrap HTTP client errors with `fmt.Errorf("failed to fetch GitHub meta: %w", err)` in `ip_checker.go`
 
 **Checkpoint**: All API error scenarios handled gracefully ✅
 

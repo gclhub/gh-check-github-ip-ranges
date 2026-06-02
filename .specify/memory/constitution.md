@@ -31,7 +31,7 @@ All Go source files live at the repository root in a single `main` package. No n
 
 - Wrap errors with `fmt.Errorf("context: %w", err)` for chain tracing
 - Errors that reach the user print to stderr and exit with code `2`
-- Never swallow errors silently — log or propagate
+- Never swallow errors silently — log or propagate (exception: invalid CIDR entries in GitHub’s `/meta` response are skipped to allow best-effort matching)
 
 ### VI. Simplicity & YAGNI
 

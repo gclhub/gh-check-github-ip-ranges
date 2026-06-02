@@ -56,7 +56,7 @@ A user provides an invalid, private, or IPv6 address. The tool should reject it 
 
 ### User Story 4 - Graceful API failure handling (Priority: P3)
 
-When the GitHub `/meta` API is unreachable, returns an error status, or returns invalid data, the tool exits with code 2 and a descriptive error message rather than panicking or hanging.
+When the GitHub `/meta` API is unreachable, returns an error status, or returns invalid data, the tool exits with code 2 and a descriptive error message rather than panicking (note: without an explicit HTTP client timeout, requests may still block indefinitely).
 
 **Why this priority**: Network failures are inevitable; graceful degradation builds trust.
 
@@ -74,7 +74,7 @@ When the GitHub `/meta` API is unreachable, returns an error status, or returns 
 
 - Invalid CIDR entries in the API response are silently skipped (not treated as errors)
 - The first matching category is returned (deterministic order: Hooks → Web → API → Git → Packages → Pages → Importer → Actions → Dependabot → Actions IPv4)
-- No arguments provided → Cobra prints usage error and exits with code 2
+- No arguments provided → command prints an args validation error to stderr (usage suppressed) and exits with code 2
 - `--help` and `--version` flags work and exit with code 0
 
 ## CLI Interface *(mandatory for CLI features)*
